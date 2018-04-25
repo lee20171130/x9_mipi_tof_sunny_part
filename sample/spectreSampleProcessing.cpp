@@ -18,6 +18,12 @@
 #include <processing/legacy/legacyTools.hpp>
 
 #include <sys/time.h>
+#include <SDM450RDIHALInterface.h>
+
+/*
+	simt video part
+*/
+SDM450RDIHALInterface *pTof4Sunny = nullptr;    //舜宇算法也需要用到TOF MIPI模组的一些方法.
 
 static __int64_t get_tick_count()
 {
@@ -198,7 +204,7 @@ int spectre_produce(unsigned int exposureTime)
     spectre::sample::freeMemory (data);
     return 0;
 }
-
+#if 0
 int main (int argc, char **argv)
 {
     // struct spectre::sample::Data data;
@@ -251,3 +257,68 @@ int main (int argc, char **argv)
 
     return 0;
 }
+#else
+int main(int argc, char **argv)
+{
+    //struct timeval tv0, tv1;
+    //unsigned int time;
+    FILE *fp;
+	int ret = 0, sensorIdx = 0;
+    //struct exposure d;
+	int frameNums;
+    //d.x = 0x1F4;
+	sensorIdx = TOF_CAM_HAL_ID;
+	frameNums = USER_SNAP_NUMS;
+	pmd_printf("=============just test SUNNY Spectre SDK & SIMT tof hal interface!!!!!!\n");
+	SDM450RDIHALInterface *camera = new SDM450RDIHALInterface(sensorIdx);
+	if (nullptr == camera) {
+		pmd_printf("[%d], new SDM450RDIHALInterface failed!!!\n", __LINE__);
+		return -1;
+	}
+	pTof4Sunny = camera;
+	pmd_printf("invoke simt cam hal interface[%s] start\n", "get_num_cameras");
+	ret = camera->get_num_cameras();
+	printf("zhangw add:get camera num is %d\n",ret);
+	pmd_printf("invoke simt cam hal interface[%s] end, ret=[%d]\n", "get_num_cameras", ret);
+	
+	pmd_printf("invoke simt cam hal interface[%s] start\n", "camera_open");
+	ret = camera->camera_open(sensorIdx);
+	pmd_printf("invoke simt cam hal interface[%s] end, ret=[%d]\n", "camera_open", ret);
+
+#if 0    
+#if (MIPITOF_USE_MONO_MODE == 1)	
+ret = spectre_use_single_frame(true);
+	pmd_printf("mipitof use mono freq mode\n");
+#else
+ret = spectre_use_single_frame(false);
+	pmd_printf("mipitof use multi freq mode\n");
+#endif
+
+	pmd_printf("invoke sunny spectre sdk interface[%s] end, ret=[%d]\n", "spectre_use_single_frame", ret);
+#endif
+
+    camera->setTOF_FPS_Mode(0);
+
+	while (frameNums--) {
+	pmd_printf("--------stat one frame consume time-----------\n");
+   
+	 spectre_produce(0);
+   
+	pmd_printf("-----------------------------------------------\n");
+	}
+
+
+
+   
+	//close camera
+	pmd_printf("invoke simt cam hal interface[%s] start\n", "camera_close");
+	ret = camera->camera_close();
+	pmd_printf("invoke simt cam hal interface[%s] end, ret=[%d]\n", "camera_close", ret);
+	
+	
+	//destroy camera
+	delete camera;
+    return 0;
+}
+
+#endif

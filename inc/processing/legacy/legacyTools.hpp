@@ -17,11 +17,13 @@
 #include <common/CompUtils.hpp>
 #include <processing/algorithm/ref/initCalcAutoExposure.hpp>
 #include <processing/common/processingInit.hpp>
-#include <video.h>
+#include <SDM450RDIHALInterface.h>
+//#include <video.h>
 
 extern "C" {
     bool sunnyGetSingleFreqMode();
 }
+extern SDM450RDIHALInterface *pTof4Sunny; 
 
 inline bool spectreLegacyParameterLoad (SpectreParameter **params, std::string path)
 {
@@ -142,8 +144,14 @@ inline bool spectreLegacyInputLoad (SpectreInput **ps_input, SpectreParameter *p
     }
 #else
     {
+    #if 0
         (*ps_input)->temperature = temperature_read();
         pmd_printf("read TEMPERATURE from hardware = %f\n", (*ps_input)->temperature);
+	#else
+		float tmp = pTof4Sunny->get_tof_temp();
+		(*ps_input)->temperature = tmp;
+		pmd_printf("load from real hardware Temp,%f\n", (*ps_input)->temperature);
+	#endif
     }
 #endif
     uint8_t numFrames;
@@ -185,10 +193,26 @@ inline bool spectreLegacyInputLoad (SpectreInput **ps_input, SpectreParameter *p
 #if (DEBUG_READ_FILE == 1)
     status = pmd_loadArray (path + "/input_RawData_all_0.bin", &total) == (numPixel * total_frame) && status ? true : false;
 #else
+    uint32_t framebuf_id, byte_nums;
     // read from camera buf
     total = (uint16_t *)malloc(numPixel * 9 * sizeof(uint16_t));
-    camera_getbuf((char *)total, numPixel * 9 * sizeof(uint16_t));
-    pmd_printf("dnx(%d): load data from camera success\n", __LINE__);
+	pmd_printf("dnx(%d): malloc for tof mipi raw data:%d\n", __LINE__, numPixel * 9 * sizeof(uint16_t));
+#if (MIPITOF_USE_MONO_MODE == 1)	
+    byte_nums = 224*173*5*2;
+#else
+    byte_nums = 224*173*9*2;
+#endif
+
+	pmd_printf("invoke simt cam hal interface[%s] start\n", "camera_getbuf");
+	pTof4Sunny->camera_getbuf((unsigned char *)total, byte_nums, framebuf_id);
+	#if 1
+	pmd_printf("save unpacked raw mipi tof data to file\n");
+#if 0
+	pmd_saveArrayToFile ("123", 224*173*9, total/*, "bin", std::ofstream::out | std::ofstream::binary | std::ofstream::trunc*/);
+#endif	
+pmd_printf("done\n");
+	#endif
+	pmd_printf("invoke simt cam hal interface[%s] end, ret=[%d]\n", "camera_getbuf", framebuf_id);
 #endif
     //printf("spectreAstonInputLoad path = %s\n", path.c_str());
     if (status == true)
