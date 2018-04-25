@@ -61,6 +61,36 @@ int sunnySaveDepthToFile(void *data, uint32_t size, char *filename)
 
     return 0;
 }
+int savePCLToFile(void *data, uint32_t size, char *file)
+{
+	static unsigned int file_index = 0;
+	struct depthpoint {
+        float x;
+        float y;
+        float z;
+        float noise;
+    };
+
+    struct depthpoint *p = (struct depthpoint *) data;
+    FILE *fp;
+    //float val;
+    unsigned int i;
+    unsigned short tmp;
+	char str[64], filename[32];
+	sprintf(filename, "%s%d.txt", file, file_index++);
+    fp = fopen(filename, "wb+");
+    if (fp) {
+        for (i = 0; i < size; i++) {
+			sprintf(str, "index[%d]:x=%fm y=%fm z=%fm\n", i, p[i].x, p[i].y, p[i].z);
+			//tmp = (unsigned short)(p[i].z * 5460); //4096
+            fwrite(str, strlen(str), 1, fp);
+        }
+        fclose(fp);
+    }
+
+    return 0;
+}
+
 
 static bool singleFreqMode = false;
 void sunnySetSingleFreqMode(bool set)
@@ -201,6 +231,7 @@ int spectre_produce4neolix(unsigned int exposureTime, void *pdata, int data_len)
 #else
     sunnySaveDepthToFile((void *)data.ps_output->pm3d_coord, 224*168, "output_depth.bin");
 #endif
+	//print spectre sdk debug info
 	pmd_printf("[spectre output part debug info]\n");
 		pmd_printf("numColumns:%d\n", data.ps_output->numColumns);
 		pmd_printf("numRows:%d\n", data.ps_output->numRows);
@@ -249,68 +280,26 @@ int spectre_produce(unsigned int exposureTime)
 
 #ifdef USE_SUNNY_EEPROM_CALIBRATION_DATA
     sunnySaveDepthToFile((void *)data.ps_output->pm3d_coord, 224*172, "output_depth.bin");
+	savePCLToFile((void *)data.ps_output->pm3d_coord, 224*172, "output_pcl");
+
+
 #else
     sunnySaveDepthToFile((void *)data.ps_output->pm3d_coord, 224*168, "output_depth.bin");
 #endif
+	//print spectre sdk debug info
+	pmd_printf("[spectre output part debug info]\n");
+		pmd_printf("numColumns:%d\n", data.ps_output->numColumns);
+		pmd_printf("numRows:%d\n", data.ps_output->numRows);
+		pmd_printf("Size of pm3d_coords:%d\n", data.ps_output->sizeCoords);
+		//将内参数据打印出来
+		pmd_printf("sizeLensParam:%d\n", (data.ps_calib)->sizeLensParam);
+		for (int i = 0; i < (data.ps_calib)->sizeLensParam; i++)
+			pmd_printf("LensParam[%d]:%f\n", i, ((data.ps_calib)->pv_lensparam)[i]);
 
     spectre::sample::freeMemory (data);
     return 0;
 }
-#if 0
-#if 0
-int main (int argc, char **argv)
-{
-    // struct spectre::sample::Data data;
-    // struct spectre::sample::Calculation calcData;
 
-    // auto waitOnKey = true;
-    // parseCommandline (argc, argv, waitOnKey, data);
-
-    pmd_printf ("PMD Spectre Sample for C API\n");
-    pmd_printf ("Version: ");
-    pmd_printf ("%s \n", spectre_getVersion());
-    pmd_printf ("\n");
-    pmd_printf ("\n");
-
-    pmd_printf ("Test Operation Mode MODE_9_5FPS_2000: \n");
-    pmd_printf ("===================================== \n");
-
-    // loadData (data);
-    // spectre::sample::initSpectre (data);
-
-    // // run and print sample calculation
-    // runProcessing (data);
-    // spectre::sample::calcMeanDistanceAndValidPixels ( (uint32_t) data.ps_output->numColumns * (uint32_t) data.ps_output->numRows,
-    //         data.ps_output->pm_distance,
-    //         data.ps_output->pm_flags,
-    //         calcData);
-    // spectre::sample::printMeanDistanceAndValidPixels (calcData);
-    
-    // spectre::sample::freeMemory (data);
-
-    // start_time = get_tick_count();
-    spectre_produce(0);
-    // last_time = get_tick_count() - start_time;
-    // printf("\n--spectre_produce---exec time :%8.6f ms\n ", (float)last_time);
-
-    pmd_printf ("\n");
-    pmd_printf ("======================== \n");
-    pmd_printf ("\n");
-    pmd_printf ("\n");
-    pmd_printf ("Spectre_sample finished succesfully. \n");
-    pmd_printf ("\n");
-    pmd_printf ("======================== \n");
-
-    // if (waitOnKey)
-    // {
-    //     pmd_printf ("\n");
-    //     pmd_printf ("Press any key to close the application. \n");
-    //     std::cin.ignore();
-    // }
-
-    return 0;
-}
-#else
 int main(int argc, char **argv)
 {
     //struct timeval tv0, tv1;
@@ -374,5 +363,3 @@ ret = spectre_use_single_frame(false);
     return 0;
 }
 
-#endif
-#endif
