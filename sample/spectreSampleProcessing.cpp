@@ -23,7 +23,7 @@
 #include <SDM450RDIHALInterface.h>
 extern char calibrationSavePath[];
 uint32_t expValue[SPECTRE_MAX_NUM_FREQS + 1];
-
+float tofLensParam[9] = {0};
 /*
 	simt video part
 */
@@ -174,6 +174,22 @@ void runProcessing (struct spectre::sample::Data &data)
     // last_time = get_tick_count()-start_time;
     // printf("\n--spectreAstonRun---exec time :%8.6f ms\n ", (float)last_time);
 }
+int spectreGetTofLensParam(float *pLensParam)
+{
+	int index;
+	//将内参数据打印出来
+	pmd_printf("sizeLensParam:%d\n", 9);
+	for (index = 0; index < 9; index++) {
+		pLensParam[index] = tofLensParam[index];
+		pmd_printf("pLensParam[%d]:%f\n", index, pLensParam[index]);
+		if (index == 8) {
+			pmd_printf("pLensParamknkjnn[%d]:%f\n", index, pLensParam[index]);
+			break;
+		}
+	}
+	return index;
+}
+
 int spectre_produce4neolix(unsigned int exposureTime, void *pdata, int data_len) 
 {
 	struct spectre::sample::Data data;
@@ -217,8 +233,10 @@ int spectre_produce4neolix(unsigned int exposureTime, void *pdata, int data_len)
 		pmd_printf("Size of pm3d_coords:%d\n", data.ps_output->sizeCoords);
 		//将内参数据打印出来
 		pmd_printf("sizeLensParam:%d\n", (data.ps_calib)->sizeLensParam);
-		for (int i = 0; i < (data.ps_calib)->sizeLensParam; i++)
+		for (int i = 0; i < (data.ps_calib)->sizeLensParam; i++) {
+			tofLensParam[i] =  ((data.ps_calib)->pv_lensparam)[i];
 			pmd_printf("LensParam[%d]:%f\n", i, ((data.ps_calib)->pv_lensparam)[i]);
+		}
 
 	//copy to neolix wrapper
 	pmd_printf("copy start.....size:%d\n", data_len);
