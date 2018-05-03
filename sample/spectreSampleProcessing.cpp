@@ -21,6 +21,8 @@
 #include <spectre4neolix.h>
 
 #include <SDM450RDIHALInterface.h>
+extern char calibrationSavePath[];
+uint32_t expValue[SPECTRE_MAX_NUM_FREQS + 1];
 
 /*
 	simt video part
@@ -118,10 +120,15 @@ void loadData (struct spectre::sample::Data &data)
     const std::string paramDir = "Process_Param";
     const std::string inputDir = "Process_Input";
     const std::string calibDir = "Process_Calib"; //added by zhudm
-
+	std::string calibFullPath;
     pmd_printf ("\n");
     pmd_printf ("Reading sample data from: %s\n", data.workingDir.c_str());
     pmd_printf ("Initialize Memory \n");
+
+
+	calibFullPath = data.workingDir + "/" + calibDir;
+		pmd_printf("calibFullPath = %s\n", calibFullPath.c_str());
+		strcpy(calibrationSavePath, calibFullPath.c_str());
 
     sunnySetSingleFreqMode(false);
     // initializiation
@@ -171,35 +178,38 @@ int spectre_produce4neolix(unsigned int exposureTime, void *pdata, int data_len)
 {
 	struct spectre::sample::Data data;
     struct spectre::sample::Calculation calcData;
-
+	expValue[0] = 200;
+	expValue[1] = exposureTime;
+	expValue[2] = exposureTime;
     start_time = get_tick_count();
     loadData (data);
     stage_time = get_tick_count();
-    printf("======= Load Data time cost :%8.6f ms\n", (float)(stage_time-start_time));
+    pmd_printf("======= Load Data time cost :%8.6f ms\n", (float)(stage_time-start_time));
     spectre::sample::initSpectre (data);
     last_time = get_tick_count();
-    printf("======= initSpectre time cost :%8.6f ms\n", (float)(last_time-stage_time));
+    pmd_printf("======= initSpectre time cost :%8.6f ms\n", (float)(last_time-stage_time));
 
     // run and print sample calculation
     runProcessing (data);
     stage_time = get_tick_count();
-    printf("======= runProcessing time cost :%8.6f ms\n", (float)(stage_time-last_time));
+    pmd_printf("======= runProcessing time cost :%8.6f ms\n", (float)(stage_time-last_time));
 
     spectre::sample::calcMeanDistanceAndValidPixels ( (uint32_t) data.ps_output->numColumns * (uint32_t) data.ps_output->numRows,
             data.ps_output->pm_distance,
             data.ps_output->pm_flags,
             calcData);
     last_time = get_tick_count();
-    printf("======= calcMeanDistanceAndValidPixels time cost :%8.6f ms\n", (float)(last_time-stage_time));
+    pmd_printf("======= calcMeanDistanceAndValidPixels time cost :%8.6f ms\n", (float)(last_time-stage_time));
     spectre::sample::printMeanDistanceAndValidPixels (calcData);
 
     last_time = get_tick_count() - start_time;
-    printf("======= Total Spectre Run time cost :%8.6f ms\n", (float)last_time);
-
+    pmd_printf("======= Total Spectre Run time cost :%8.6f ms\n", (float)last_time);
+#if 0
 #ifdef USE_SUNNY_EEPROM_CALIBRATION_DATA
     sunnySaveDepthToFile((void *)data.ps_output->pm3d_coord, 224*172, "output_depth.bin");
 #else
     sunnySaveDepthToFile((void *)data.ps_output->pm3d_coord, 224*168, "output_depth.bin");
+#endif
 #endif
 	pmd_printf("[spectre output part debug info]\n");
 		pmd_printf("numColumns:%d\n", data.ps_output->numColumns);

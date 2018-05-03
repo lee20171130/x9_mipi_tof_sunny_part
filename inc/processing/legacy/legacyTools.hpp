@@ -24,6 +24,8 @@ extern "C" {
     bool sunnyGetSingleFreqMode();
 }
 extern SDM450RDIHALInterface *pTof4Sunny; 
+extern uint32_t expValue[SPECTRE_MAX_NUM_FREQS + 1];
+
 
 inline bool spectreLegacyParameterLoad (SpectreParameter **params, std::string path)
 {
@@ -253,16 +255,25 @@ pmd_printf("done\n");
 
     free(total);
 #endif
-    uint32_t *expTimesIn = nullptr;
-    if(useSingleFreq)
-        status = pmd_loadArray (path + "/input_Single_InExposureTimes.bin", &expTimesIn) == param->inputConfig.numFreqs + 1u;
-    else
-        status = pmd_loadArray (path + "/input_InExposureTimes.bin", &expTimesIn) == param->inputConfig.numFreqs + 1u;
-    if (status)
-    {
-        std::copy (expTimesIn, expTimesIn + param->inputConfig.numFreqs + 1, PMD_CHECKED_ITERATOR ( (*ps_input)->exposureTimesIn, param->inputConfig.numFreqs+1));
-    }
-    free (expTimesIn);
+ #if (DEBUG_READ_FILE == 1)
+		uint32_t *expTimesIn = nullptr;
+		if(useSingleFreq)
+			status = pmd_loadArray (path + "/input_Single_InExposureTimes.bin", &expTimesIn) == param->inputConfig.numFreqs + 1u;
+		else
+			status = pmd_loadArray (path + "/input_InExposureTimes.bin", &expTimesIn) == param->inputConfig.numFreqs + 1u;
+		if (status)
+		{
+			std::copy (expTimesIn, expTimesIn + param->inputConfig.numFreqs + 1, PMD_CHECKED_ITERATOR ( (*ps_input)->exposureTimesIn, param->inputConfig.numFreqs+1));
+		}
+		free (expTimesIn);
+#else
+		//if(camera_get_exposure(expValue) == 0)
+		//{
+			for (int i = 0; i < SPECTRE_MAX_NUM_FREQS + 1; i++)
+				pmd_printf("expValue[%d] = %d\n", i, expValue[i]);
+			std::copy (expValue, expValue + param->inputConfig.numFreqs + 1, PMD_CHECKED_ITERATOR ( (*ps_input)->exposureTimesIn, param->inputConfig.numFreqs+1));
+		//}
+#endif
 
     uint32_t *freqs;
     status = pmd_loadArray (path + "/input_Frequencies.bin", &freqs) == 2 + 1u; //zhudm, fix to dual frequence

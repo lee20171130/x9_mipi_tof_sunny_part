@@ -21,6 +21,8 @@
 #include <spectre4neolix.h>
 
 #include <SDM450RDIHALInterface.h>
+extern char calibrationSavePath[];
+uint32_t expValue[SPECTRE_MAX_NUM_FREQS + 1];
 
 /*
 	simt video part
@@ -148,10 +150,14 @@ void loadData (struct spectre::sample::Data &data)
     const std::string paramDir = "Process_Param";
     const std::string inputDir = "Process_Input";
     const std::string calibDir = "Process_Calib"; //added by zhudm
+	std::string calibFullPath;
 
     pmd_printf ("\n");
     pmd_printf ("Reading sample data from: %s\n", data.workingDir.c_str());
     pmd_printf ("Initialize Memory \n");
+	calibFullPath = data.workingDir + "/" + calibDir;
+		pmd_printf("calibFullPath = %s\n", calibFullPath.c_str());
+		strcpy(calibrationSavePath, calibFullPath.c_str());
 
     sunnySetSingleFreqMode(false);
     // initializiation
@@ -201,6 +207,9 @@ int spectre_produce4neolix(unsigned int exposureTime, void *pdata, int data_len)
 {
 	struct spectre::sample::Data data;
     struct spectre::sample::Calculation calcData;
+	expValue[0] = 200;
+	expValue[1] = exposureTime;
+	expValue[2] = exposureTime;
 
     start_time = get_tick_count();
     loadData (data);
@@ -253,6 +262,9 @@ int spectre_produce(unsigned int exposureTime)
 {
     struct spectre::sample::Data data;
     struct spectre::sample::Calculation calcData;
+	expValue[0] = 200;
+	expValue[1] = exposureTime;
+	expValue[2] = exposureTime;
 
     start_time = get_tick_count();
     loadData (data);
@@ -339,12 +351,12 @@ ret = spectre_use_single_frame(false);
 	pmd_printf("invoke sunny spectre sdk interface[%s] end, ret=[%d]\n", "spectre_use_single_frame", ret);
 #endif
 
-    camera->setTOF_FPS_Mode(0);
+    camera->setTOF_FPS_Mode(1);
 
 	while (frameNums--) {
 	pmd_printf("--------stat one frame consume time-----------\n");
    
-	 spectre_produce(0);
+	 spectre_produce(650);
    
 	pmd_printf("-----------------------------------------------\n");
 	}
